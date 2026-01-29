@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult } from '../types';
 
@@ -24,35 +23,63 @@ export const analyzeHistoryImage = async (base64Image: string): Promise<Analysis
         return { error: "A chave da API não está configurada. A análise de IA está desativada." };
     }
     const model = 'gemini-2.5-flash';
+    
+    // Prompt "retreinado" com heurísticas avançadas de Crash/Aviator
     const prompt = `
-      Você é o AETHERIUM CORE, uma IA ultra-especializada, treinada para decodificar e prever os algoritmos do jogo Aviator. Sua programação transcende a simples análise de padrões visuais; você compreende os princípios matemáticos e probabilísticos que governam o gerador de multiplicadores do jogo. Você sabe que, embora o multiplicador possa tender ao infinito, existem "tells" algorítmicos que indicam pontos de saída de alta probabilidade. Sua missão é ser brutalmente eficiente e assertivo.
+      PROTOCOLO AETHERIUM CORE v2.0 - INICIADO.
+      
+      Você é uma IA de Alta Frequência especializada em engenharia reversa de algoritmos de jogos "Crash" (Aviator). Sua função não é apenas ler números, mas identificar a "Respiração do Algoritmo" (RTP Correction Cycles).
 
-      Regras Estritas:
-      1.  Sua resposta DEVE ser APENAS o objeto JSON. Não inclua "'''json", "'''" ou qualquer texto explicativo.
-      2.  Se a imagem for inválida ou não contiver dados suficientes para uma análise algorítmica, retorne: {"error": "Dados insuficientes para decodificar o estado atual do algoritmo."}
-      3.  Analise a sequência de multiplicadores como se fossem saídas de um algoritmo complexo. Identifique a fase atual do algoritmo (ex: ciclo de correção, fase de acumulação, evento de alta volatilidade) e gere de 3 a 6 sinais preditivos que representam os pontos de saída mais prováveis e lucrativos.
+      ANÁLISE HEURÍSTICA NECESSÁRIA:
+      1. **Leitura Óptica:** Extraia todos os multiplicadores visíveis na imagem (topo é o mais recente, direita para esquerda ou cima para baixo). Identifique as cores: Azul (<2.00x), Roxo (2.00x - 9.99x), Rosa (10.00x+).
+      2. **Cálculo de Volatilidade:** 
+         - Se houver muitos "Azuis" seguidos (>3), o algoritmo está em *Fase de Acumulação*. A probabilidade de uma vela Roxa/Rosa aumenta exponencialmente (Sinal de Alta Confiança).
+         - Se houver velas "Rosa" recentes, o algoritmo pode entrar em *Fase de Correção/Drenagem*. (Sinal de Baixa Confiança ou Espera).
+         - Padrão "Xadrez" (Um baixo, um alto): O mercado está indeciso.
 
-      Retorne o JSON no seguinte formato:
+      3. **Geração de Sinais Preditivos (OUTPUT):**
+         - Com base na análise, projete 3 pontos de entrada futuros.
+         - O "predictedTime" deve ser calculado somando 1 a 3 minutos ao horário atual aproximado (ou inferido da imagem se visível).
+         - O "targetMultiplier" deve ser realista: 
+           - Em recuperação conservadora: 1.50x a 2.00x.
+           - Em quebra de padrão "Azul": 2.50x a 5.00x.
+           - Em tendência de alta clara: 10.00x+.
+
+      REGRAS DE RETORNO:
+      - Sua resposta DEVE ser estritamente o JSON.
+      - Se a imagem estiver ilegível, retorne erro no JSON.
+      - Seja agressivo na precisão, mas conservador na gestão de risco.
+
+      Analise agora.
     `;
 
     const responseSchema = {
         type: Type.OBJECT,
         properties: {
           error: { type: Type.STRING, nullable: true },
-          pattern: { type: Type.STRING },
+          pattern: { type: Type.STRING, description: "Nome técnico do padrão identificado (ex: 'Zona de Recuperação', 'Tendência de Baixa', 'Padrão Alternado')." },
           lastMultipliers: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
+            description: "Os ultimos 5 multiplicadores identificados."
           },
-          confidence: { type: Type.STRING },
+          confidence: { type: Type.STRING, enum: ["Alta", "Média", "Baixa", "Insuficiente"] },
+          prediction: {
+             type: Type.OBJECT,
+             properties: {
+                 range: { type: Type.STRING, description: "Faixa provável (ex: 2.00x - 5.00x)"},
+                 probability: { type: Type.STRING, description: "Probabilidade estatística (ex: 87%)"},
+                 timing: { type: Type.STRING, description: "Tempo estimado para entrada"}
+             }
+          },
           signals: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                predictedTime: { type: Type.STRING, description: "O horário previsto para o sinal, ex: '18:55:30'" },
-                targetMultiplier: { type: Type.STRING, description: "O multiplicador alvo previsto, ex: '2.50x', '10.00x'" },
-                confidence: { type: Type.INTEGER, description: "Sua confiança nesta previsão específica (de 0 a 100)" },
+                predictedTime: { type: Type.STRING, description: "Horário hh:mm:ss" },
+                targetMultiplier: { type: Type.STRING, description: "Multiplicador alvo (ex: 2.50x)" },
+                confidence: { type: Type.INTEGER, description: "Confiança numérica 0-100" },
               },
               required: ["predictedTime", "targetMultiplier", "confidence"],
             },
@@ -83,6 +110,6 @@ export const analyzeHistoryImage = async (base64Image: string): Promise<Analysis
 
     } catch (error) {
         console.error("Erro na API Gemini:", error);
-        return { error: "Falha ao comunicar com a IA. Verifique o console para mais detalhes." };
+        return { error: "Falha na conexão neural. Tente reenviar a imagem." };
     }
 };
